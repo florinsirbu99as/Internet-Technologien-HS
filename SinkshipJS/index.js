@@ -1,5 +1,6 @@
 window.addEventListener("load", () => {
   SinkShip.init();
+  SinkShip.ShipHandler();
 });
 
 const limiter = document.createElement("div");
@@ -15,7 +16,7 @@ let SinkShip = {
     document.body.appendChild(this.makeHeader());
     document.body.appendChild(this.makeMain());
     document.body.appendChild(this.makeFooter());
-    this.launchShip();
+    this.ShipHandler();
   },
   makeHeader() {
     const header = document.createElement("header");
@@ -214,12 +215,19 @@ let SinkShip = {
       }
     }
   },
-  /*
-  launchShip() {
-    this.playerField[0][0].classList.add("left");
-    this.playerField[0][1].classList.add("horizontal");
-    this.playerField[0][2].classList.add("horizontal");
-    this.playerField[0][3].classList.add("right");
+
+  ShipHandler() {
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        const cell = this.playerField[y][x];
+        cell.addEventListener("click", () => {
+          if (cell.classList.contains("usable")) {
+            console.log(x, y);
+          }
+        });
+      }
+    }
   },
-  */
 };
+
+//Inventory
