@@ -163,16 +163,63 @@ let SinkShip = {
     console.log(data);
     if (data.length == 3) {
       td.className = Array.isArray(data) ? data.join(" ") : data;
+      td.addEventListener("click", () => {
+        console.log("Clicked:", data);
+        this.showUsablePositions(data, this.playerField); // Pass playerField array
+      });
     } else {
       td.innerHTML = data;
     }
     return td;
   },
 
+  showUsablePositions(data, playerField) {
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        this.checkShip(x, y, data, playerField);
+      }
+    }
+  },
+
+  checkShip(x, y, data, playerField) {
+    let size;
+    if (data[0] === "battleship") {
+      size = 6;
+    } else if (data[0] === "cruiser") {
+      size = 7;
+    } else if (data[0] === "destroyer") {
+      size = 8;
+    } else if (data[0] === "submarine") {
+      size = 9;
+    }
+    this.showAvaliablePosition(x, y, size, playerField, data);
+  },
+
+  showAvaliablePosition(x, y, size, playerField, data) {
+    if (data[1] === "h") {
+      if (x < size) {
+        playerField[y][x].style.backgroundColor = "green";
+        playerField[y][x].className = "cell usable";
+      } else {
+        playerField[y][x].style.backgroundColor = "grey";
+        playerField[y][x].className = "cell disabled";
+      }
+    } else {
+      if (y < size) {
+        playerField[y][x].style.backgroundColor = "green";
+        playerField[y][x].className = "cell usable";
+      } else {
+        playerField[y][x].style.backgroundColor = "grey";
+        playerField[y][x].className = "cell disabled";
+      }
+    }
+  },
+  /*
   launchShip() {
     this.playerField[0][0].classList.add("left");
     this.playerField[0][1].classList.add("horizontal");
     this.playerField[0][2].classList.add("horizontal");
     this.playerField[0][3].classList.add("right");
   },
+  */
 };
