@@ -220,6 +220,21 @@ button {
   background-position: -200% -100%;
 }
 
+.top {
+  background-color: lightblue;
+  background-position: 100% 0%;
+}
+
+.bottom {
+  background-color: lightblue;
+  background-position: 100% -66%;
+}
+
+.vertical {
+  background-color: lightblue;
+  background-position: -100% -100%;
+}
+
 table {
   text-align: left;
   margin: 20px auto;
