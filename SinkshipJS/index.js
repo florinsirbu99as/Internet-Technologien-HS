@@ -242,6 +242,11 @@ let SinkShip = {
             console.log(
               `Orientation: ${this.selectedShipOrientation}, Size: ${this.selectedShipSize}, Type: ${this.selectedShipType}`
             );
+            this.isShipAdjacentOrColliding(
+              this.selectedShipOrientation,
+              this.selectedShipSize,
+              this.selectedShipType
+            );
 
             cell.classList.remove("usable");
             if (this.selectedShipOrientation === "w") {
@@ -343,10 +348,10 @@ let SinkShip = {
 
   buildInventory() {
     this.inventory = [
-      { type: "battleship", size: "5", available: 1 },
-      { type: "cruiser", size: "4", available: 2 },
-      { type: "destroyer", size: "3", available: 3 },
-      { type: "submarine", size: "2", available: 4 },
+      { type: "battleship", size: "5", available: 1, isPlaced: false },
+      { type: "cruiser", size: "4", available: 2, isPlaced: false },
+      { type: "destroyer", size: "3", available: 3, isPlaced: false },
+      { type: "submarine", size: "2", available: 4, isPlaced: false },
     ];
   },
 
@@ -379,7 +384,6 @@ let SinkShip = {
   },
 
   drawShip(x, y) {
-    console.log(this.selectedShipSize);
     if (this.selectedShipOrientation === "horizontal") {
       const firstCell = this.playerField[y][x];
       firstCell.classList.add("cell", "left");
@@ -406,5 +410,11 @@ let SinkShip = {
         }
       }
     }
+  },
+
+  isShipAdjacentOrColliding(className, shipSize) {
+    for(let y = 0; y )
+    console.log("plaziert");
+    return false;
   },
 };
