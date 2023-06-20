@@ -250,8 +250,8 @@ thead {
   font-weight: 600;
 }
 
-#computerfield td:first-child,
-#computerfield table td:nth-child(5) {
+#serverfield td:first-child,
+#serverfield table td:nth-child(5) {
   text-align: center;
 }
 
@@ -305,4 +305,9 @@ thead {
 
 .selectable:hover {
   background-color: orange;
+}
+
+button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

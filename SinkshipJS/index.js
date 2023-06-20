@@ -9,7 +9,7 @@ limiter.classList.add("limiter");
 
 let SinkShip = {
   playerField: [],
-  ComputerField: [],
+  serverField: [],
   inventory: [],
   selectedShipType: "",
   selectedShipOrientation: "",
@@ -36,19 +36,18 @@ let SinkShip = {
     const controls = this.makeControls();
     const fields = this.makeDiv("fields");
     const playerField = this.makeField();
-    const computerField = this.buildMenu();
+    const serverField = this.buildMenu();
 
     playerField.id = "playerfield";
-    computerField.id = "computerfield";
+    serverField.id = "serverfield";
 
     fields.appendChild(playerField.field);
-    fields.appendChild(computerField);
-    //fields.appendChild(computerField.field);
+    fields.appendChild(serverField);
     main.appendChild(controls);
     main.appendChild(fields);
 
     this.playerField = playerField.Field;
-    this.ComputerField = computerField.Field;
+    this.serverField = serverField.Field;
 
     return main;
   },
@@ -79,29 +78,72 @@ let SinkShip = {
     console.log(Field);
     return { field, Field };
   },
+
   makeControls() {
     const controls = this.makeDiv("controls");
-    controls.appendChild(this.makeButton("Build"));
-    controls.appendChild(this.makeButton("Play"));
+
+    const buildButton = this.makeButton("Build", "btn-build");
+    buildButton.addEventListener("click", () => {
+      this.buildButton();
+    });
+    controls.appendChild(buildButton);
+
+    const playButton = this.makeButton("Play", "btn-play");
+    playButton.addEventListener("click", () => {
+      this.playButton();
+    });
+    //playButton.disabled = true;
+    controls.appendChild(playButton);
+
+    const autoplaceButton = this.makeButton("Autoplace", "btn-autplace");
+    autoplaceButton.addEventListener("click", () => {
+      this.autoplaceButton();
+    });
+    controls.appendChild(autoplaceButton);
+
     return controls;
   },
-  makeButton(label) {
+
+  makeButton(label, id) {
     const button = document.createElement("button");
     button.innerHTML = label;
+    button.id = id;
     return button;
   },
+
+  buildButton() {
+    console.log("build");
+  },
+
+  playButton() {
+    const serverField = document.getElementById("serverfield");
+    serverField.parentNode.removeChild(serverField);
+
+    const newServerField = this.makeField();
+    newServerField.field.id = "serverfield";
+
+    const fields = document.querySelector(".fields");
+    fields.appendChild(newServerField.field);
+  },
+
+  autoplaceButton() {
+    this.buildButton();
+  },
+
   buildMenu() {
-    const computerField = this.makeDiv("field");
-    computerField.classList.add("field");
+    const serverField = this.makeDiv("field");
+    serverField.classList.add("field");
     const table = document.createElement("table");
 
-    computerField.appendChild(table);
+    serverField.appendChild(table);
     table.appendChild(this.makeTableHeader("Number"));
+    table.appendChild(this.makeTableHeader(""));
+    table.appendChild(this.makeTableHeader(""));
     table.appendChild(this.makeTableHeader("Type"));
     table.appendChild(this.makeTableHeader("Size"));
     table.appendChild(this.makeTableBody());
 
-    return computerField;
+    return serverField;
   },
 
   makeTableHeader(title) {
@@ -180,6 +222,22 @@ let SinkShip = {
     return td;
   },
 
+  enablePlayButton() {
+    const selectableElements = document.querySelectorAll(
+      "[class*='selectable']"
+    );
+    let enableButton = true;
+
+    selectableElements.forEach((element) => {
+      if (element.style.backgroundColor !== "grey") {
+        enableButton = false;
+      }
+    });
+
+    const playButton = document.getElementById("btn-play");
+    playButton.disabled = !enableButton;
+  },
+
   showUsablePositions(data, playerField) {
     for (let y = 0; y < 10; y++) {
       for (let x = 0; x < 10; x++) {
@@ -192,40 +250,57 @@ let SinkShip = {
     let size;
     if (data[0] === "battleship") {
       size = 6;
+      sizeship = 5;
     } else if (data[0] === "cruiser") {
       size = 7;
+      sizeship = 4;
     } else if (data[0] === "destroyer") {
       size = 8;
+      sizeship = 3;
     } else if (data[0] === "submarine") {
       size = 9;
+      sizeship = 2;
     }
-    this.showAvaliablePosition(x, y, size, playerField, data);
+    this.showAvaliablePosition(x, y, size, sizeship, playerField, data);
   },
 
-  showAvaliablePosition(x, y, size, playerField, data) {
+  showAvaliablePosition(x, y, size, sizeship, playerField, data) {
     if (
       !playerField[y][x].classList.contains("horizontal") &&
       !playerField[y][x].classList.contains("vertical") &&
       !playerField[y][x].classList.contains("left") &&
       !playerField[y][x].classList.contains("right") &&
       !playerField[y][x].classList.contains("top") &&
-      !playerField[y][x].classList.contains("bottom")
+      !playerField[y][x].classList.contains("bottom") &&
+      !playerField[y][x].classList.contains("colliding")
     ) {
       if (data[1] === "h") {
         if (x < size) {
           playerField[y][x].style.backgroundColor = "green";
-          playerField[y][x].className = "cell usable";
+          playerField[y][x].classList = "cell usable";
         } else {
           playerField[y][x].style.backgroundColor = "grey";
-          playerField[y][x].className = "cell disabled";
+          playerField[y][x].classList = "cell disabled";
         }
       } else if (data[1] === "v") {
         if (y < size) {
           playerField[y][x].style.backgroundColor = "green";
-          playerField[y][x].className = "cell usable";
+          playerField[y][x].classList = "cell usable";
         } else {
           playerField[y][x].style.backgroundColor = "grey";
-          playerField[y][x].className = "cell disabled";
+          playerField[y][x].classList = "cell disabled";
+        }
+      }
+    } else if (playerField[y][x].classList.contains("left")) {
+      for (let i = 0; i <= sizeship; i++) {
+        if (playerField[y][x - i]) {
+          playerField[y][x - i].style.backgroundColor = "grey";
+          playerField[y][x - i].classList.add("disabled");
+        }
+      }
+    } else if (playerField[y][x].classList.contains("horizontal")) {
+      for (let i = 0; i <= sizeship; i++) {
+        if (playerField[y - 1] || playerField[y + 1]) {
         }
       }
     }
@@ -242,12 +317,7 @@ let SinkShip = {
             console.log(
               `Orientation: ${this.selectedShipOrientation}, Size: ${this.selectedShipSize}, Type: ${this.selectedShipType}`
             );
-            this.isShipAdjacentOrColliding(
-              this.selectedShipOrientation,
-              this.selectedShipSize,
-              this.selectedShipType
-            );
-
+            this.removeShip();
             cell.classList.remove("usable");
             if (this.selectedShipOrientation === "w") {
               for (let i = 0; i < this.selectedShipSize; i++) {
@@ -348,10 +418,34 @@ let SinkShip = {
 
   buildInventory() {
     this.inventory = [
-      { type: "battleship", size: "5", available: 1, isPlaced: false },
-      { type: "cruiser", size: "4", available: 2, isPlaced: false },
-      { type: "destroyer", size: "3", available: 3, isPlaced: false },
-      { type: "submarine", size: "2", available: 4, isPlaced: false },
+      {
+        type: "battleship",
+        size: "5",
+        available: 1,
+        isPlaced: false,
+        haveShips: true,
+      },
+      {
+        type: "cruiser",
+        size: "4",
+        available: 2,
+        isPlaced: false,
+        haveShips: true,
+      },
+      {
+        type: "destroyer",
+        size: "3",
+        available: 3,
+        isPlaced: false,
+        haveShips: true,
+      },
+      {
+        type: "submarine",
+        size: "2",
+        available: 4,
+        isPlaced: false,
+        haveShips: true,
+      },
     ];
   },
 
@@ -359,16 +453,34 @@ let SinkShip = {
     this.saveShipData(data);
     for (let i = 0; i < this.inventory.length; i++) {
       if (data[0] === this.inventory[i].type) {
-        if (this.inventory[i].available <= 0) {
-          this.hideShip(data);
-          return 0;
-        } else {
-          console.log(data[0]);
+        if (this.inventory[i].available > 1) {
           this.inventory[i].available -= 1;
-          console.log(this.inventory[i].available);
+        } else {
+          this.hideShip();
         }
       }
     }
+  },
+
+  hideShip() {
+    const shipElementh = document.querySelector(
+      `.${this.selectedShipType}.h.selectable`
+    );
+    const shipElementv = document.querySelector(
+      `.${this.selectedShipType}.v.selectable`
+    );
+    if (shipElementh || shipElementv) {
+      shipElementh.style.backgroundColor = "grey";
+      shipElementh.style.pointerEvents = "none";
+      shipElementv.style.backgroundColor = "grey";
+      shipElementv.style.pointerEvents = "none";
+    }
+    for (let i = 0; i < this.inventory.length; i++) {
+      if (this.inventory.type === this.selectedShipType) {
+        this.inventory.haveShips = false;
+      }
+    }
+    this.enablePlayButton();
   },
 
   saveShipData(data) {
@@ -410,11 +522,42 @@ let SinkShip = {
         }
       }
     }
+    for (let i = 0; i < this.inventory.length; i++) {
+      if (this.selectedShipType === this.inventory[i].type) {
+        this.inventory[i].isPlaced = true;
+        console.log(this.inventory[i].isPlaced);
+      }
+    }
   },
 
-  isShipAdjacentOrColliding(className, shipSize) {
-    for(let y = 0; y )
-    console.log("plaziert");
-    return false;
+  removeShip() {
+    for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        const cell = this.playerField[x][y];
+        if (cell.classList.contains("left")) {
+          cell.addEventListener("click", () => {
+            cell.classList.remove("left");
+          });
+        }
+      }
+    }
+  },
+
+  buildButton() {
+    for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        this.playerField[x][y].classList = "cell";
+        this.playerField[x][y].style.backgroundColor = "";
+      }
+    }
+
+    const selectableElements = document.querySelectorAll(
+      "[class*='selectable']"
+    );
+
+    selectableElements.forEach((element) => {
+      element.style.backgroundColor = "";
+    });
+    this.buildInventory();
   },
 };
