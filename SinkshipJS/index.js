@@ -2,6 +2,7 @@ window.addEventListener("load", () => {
   SinkShip.init();
   SinkShip.shipHandler();
   SinkShip.buildInventory();
+  //SinkShip.playerWon();
 });
 
 const limiter = document.createElement("div");
@@ -14,6 +15,7 @@ let SinkShip = {
   selectedShipType: "",
   selectedShipOrientation: "",
   selectedShipSize: "",
+  playButtonPressed: false,
 
   init() {
     document.body.appendChild(this.makeHeader());
@@ -23,37 +25,45 @@ let SinkShip = {
   makeHeader() {
     const header = document.createElement("header");
     header.innerHTML = `
-        <h1>Sink Ship</h1>
-        <h4>by Florin Alexandru Siru</h4>
-      `;
+      <h1>Sink Ship</h1>
+      <h4>by Florin Alexandru Sirbu</h4>
+    `;
     header.appendChild(limiter);
     return header;
   },
+
   makeMain() {
     const main = document.createElement("main");
     const controls = this.makeControls();
     const fields = this.makeDiv("fields");
     const playerField = this.makeField();
     const serverField = this.buildMenu();
+    const message = this.makeDiv("message");
 
-    playerField.id = "playerfield";
+    playerField.field.id = "playerfield";
     serverField.id = "serverfield";
+    message.id = "message";
 
     fields.appendChild(playerField.field);
     fields.appendChild(serverField);
     main.appendChild(controls);
+    main.appendChild(message);
     main.appendChild(fields);
+    main.appendChild(limiter);
 
     this.playerField = playerField.Field;
     this.serverField = serverField.Field;
+    this.messageElement = message;
 
     return main;
   },
+
   makeFooter() {
     const footer = document.createElement("footer");
     footer.appendChild(limiter);
     return footer;
   },
+
   makeDiv(className) {
     const div = document.createElement("div");
     div.classList.add(className);
@@ -88,6 +98,7 @@ let SinkShip = {
 
     const playButton = this.makeButton("Play", "btn-play");
     playButton.addEventListener("click", () => {
+      this.playButtonPressed = true;
       this.playButton();
     });
     playButton.disabled = true;
@@ -109,10 +120,6 @@ let SinkShip = {
     return button;
   },
 
-  buildButton() {
-    console.log("build");
-  },
-
   playButton() {
     const serverField = document.getElementById("serverfield");
     serverField.parentNode.removeChild(serverField);
@@ -122,6 +129,244 @@ let SinkShip = {
 
     const fields = document.querySelector(".fields");
     fields.appendChild(newServerField.field);
+
+    this.makeShot();
+    this.changeField();
+    this.sendStart();
+
+    const serverFieldCells = document.querySelectorAll("#serverfield .cell");
+
+    serverFieldCells.forEach((cell) => {
+      cell.classList.add("shootable");
+    });
+  },
+
+  async sendStart() {
+    const request = "request=start&userid=flsiit00";
+
+    const response = await this.fetchAndDecode(request);
+
+    console.log(response);
+
+    this.token = response.token;
+    this.messageElement.textContent = response.statusText;
+
+    this.makeShot();
+  },
+
+  makeShot() {
+    const serverFieldCells = document.querySelectorAll("#serverfield .cell");
+    serverFieldCells.forEach((cell) => {
+      const clickHandler = cell._clickHandler;
+      if (clickHandler) {
+        cell.removeEventListener("click", clickHandler);
+        delete cell._clickHandler;
+      }
+    });
+
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        const index = y * 10 + x;
+        const cell = serverFieldCells[index];
+
+        const clickHandler = () => {
+          this.changeField();
+          this.sendShot(y, x, cell);
+          console.log(x, y, cell);
+          cell.removeEventListener("click", cell._clickHandler);
+        };
+
+        cell.addEventListener("click", clickHandler);
+        cell._clickHandler = clickHandler;
+        cell.classList.replace("off", "shootable");
+      }
+    }
+  },
+
+  async sendShot(y, x, cell) {
+    const request = `request=shoot&token=${this.token}&x=${x}&y=${y}`;
+    const response = await this.fetchAndDecode(request);
+
+    console.log(response);
+
+    this.messageElement.textContent = response.statusText;
+
+    this.fieldsChange();
+
+    if (response.state === 1) {
+      if (response.statusText === "You have sunk a ship - shoot again") {
+        cell.classList.replace("shootable", "hitLast");
+      } else {
+        cell.classList.replace("shootable", "hit");
+      }
+    } else if (response.state === 2) {
+      cell.classList.replace("shootable", "water");
+      const coordinates = await this.getShotCoordinates();
+      const result = this.findHit(coordinates);
+      this.sendResult(result);
+    } else if (response.state === 4) {
+      cell.classList.replace("shootable", "hitLast");
+      this.playerWon();
+    }
+  },
+
+  async sendResult(result) {
+    const request = `request=sendingresult&token=${this.token}&result=${result}`;
+    const response = await this.fetchAndDecode(request);
+
+    console.log(response);
+
+    if (result === 0) {
+      this.makeShot();
+    } else if (result === 1) {
+      const coordinates = await this.getShotCoordinates();
+      const newResult = this.findHit(coordinates);
+      this.sendResult(newResult);
+    } else if (result === 2) {
+      this.serverWon();
+      console.log("serverwon");
+    }
+
+    this.messageElement.textContent = response.statusText;
+  },
+
+  findHit(coordinates) {
+    const playerFieldCells = document.querySelectorAll("#playerfield .cell");
+    const { y: yShot, x: xShot } = coordinates;
+    const cell = playerFieldCells[yShot * 10 + xShot];
+    const shipSunk = this.sunkShip(yShot, xShot);
+
+    const hasRemainingShipCells = Array.from(playerFieldCells).some((cell) => {
+      return (
+        cell.classList.contains("top2") ||
+        cell.classList.contains("vertical") ||
+        cell.classList.contains("bottom2") ||
+        cell.classList.contains("left2") ||
+        cell.classList.contains("horizontal") ||
+        cell.classList.contains("right2")
+      );
+    });
+
+    if (shipSunk === 0) {
+      return 0;
+    } else if (shipSunk === 1) {
+      return 1;
+    } else if (!hasRemainingShipCells) {
+      return 2;
+    }
+
+    return 0;
+  },
+
+  sunkShip(yShot, xShot) {
+    const playerFieldCells = document.querySelectorAll("#playerfield .cell");
+    console.log(yShot, xShot);
+
+    if (playerFieldCells.length === 0) {
+      console.error("Player field cells not found or empty.");
+      return;
+    }
+
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        const cellIndex = y * 10 + x;
+        const cell = playerFieldCells[cellIndex];
+
+        if (y === yShot && x === xShot) {
+          if (
+            cell.classList.contains("top2") ||
+            cell.classList.contains("vertical") ||
+            cell.classList.contains("bottom2") ||
+            cell.classList.contains("left2") ||
+            cell.classList.contains("horizontal") ||
+            cell.classList.contains("right2")
+          ) {
+            cell.classList.remove("top2");
+            cell.classList.remove("vertical");
+            cell.classList.remove("bottom2");
+            cell.classList.remove("left2");
+            cell.classList.remove("horizontal");
+            cell.classList.remove("right2");
+            cell.classList.remove("water");
+            cell.classList.add("hit");
+            return 1;
+          } else if (cell.classList.contains("water")) {
+            cell.classList.remove("water");
+            cell.classList.add("hitWater");
+            return 0;
+          }
+        }
+      }
+    }
+  },
+
+  async getShotCoordinates() {
+    const request = `request=getshotcoordinates&token=${this.token}`;
+    let response = await this.fetchAndDecode(request);
+
+    // no already used coordinates
+    const usedCoordinates = [];
+
+    while (usedCoordinates.includes(`${response.y},${response.x}`)) {
+      response = await this.fetchAndDecode(request);
+    }
+
+    usedCoordinates.push(`${response.y},${response.x}`);
+
+    console.log(response);
+
+    return { y: response.y, x: response.x };
+  },
+
+  fieldsChange() {
+    const pcFieldCells = document.querySelectorAll("#serverfield .cell");
+
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        const index = y * 10 + x;
+        const cell = pcFieldCells[index];
+
+        cell.classList.replace("off", "shootable");
+      }
+    }
+  },
+
+  changeField() {
+    const cells = document.querySelectorAll(".cell");
+    cells.forEach((cell) => {
+      if (
+        (cell.parentElement.id != "PcField" &&
+          cell.classList.contains("top")) ||
+        cell.classList.contains("vertical") ||
+        cell.classList.contains("bottom") ||
+        cell.classList.contains("horizontal") ||
+        cell.classList.contains("right") ||
+        cell.classList.contains("left") ||
+        cell.classList.contains("top2") ||
+        cell.classList.contains("bottom2") ||
+        cell.classList.contains("right2") ||
+        cell.classList.contains("left2")
+      ) {
+        cell.classList.replace("bottom", "bottom2");
+        cell.classList.replace("top", "top2");
+        cell.classList.replace("left", "left2");
+        cell.classList.replace("right", "right2");
+        cell.removeEventListener("click", this.cellClickHandler);
+      } else if (cell.parentElement.id != "serverfield") {
+        cell.classList.add("water");
+        cell.removeEventListener("click", this.cellClickHandler);
+      } else {
+        cell.classList.remove("shootable");
+        cell.classList.add("off");
+        cell.removeEventListener("click", this.cellClickHandler);
+      }
+    });
+  },
+
+  async fetchAndDecode(query) {
+    const url =
+      "https://www2.hs-esslingen.de/~melcher/internet-technologien/sinkship/?";
+    return fetch(url + query).then((response) => response.json());
   },
 
   autoplaceButton() {
@@ -139,7 +384,20 @@ let SinkShip = {
       Submarine: 2,
     };
 
-    this.buildButton();
+    for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        this.playerField[x][y].classList = "cell";
+        this.playerField[x][y].style.backgroundColor = "";
+      }
+    }
+
+    const selectableElements = document.querySelectorAll(
+      "[class*='selectable']"
+    );
+
+    selectableElements.forEach((element) => {
+      element.style.backgroundColor = "";
+    });
     this.buildInventory();
 
     placeShip.call(this, battleshipType, shipSize.Battleship);
@@ -206,6 +464,15 @@ let SinkShip = {
       if (ship) {
         ship.available--;
       }
+    }
+    this.setInventoryNull();
+    console.log(this.inventory);
+  },
+
+  setInventoryNull() {
+    for (let i = 0; i < this.inventory.length; i++) {
+      this.inventory[i].available = 0;
+      this.checkIfShipsEmpty(this.inventory[i].type);
     }
   },
 
@@ -414,7 +681,17 @@ let SinkShip = {
         }
       }
     }
-
+    if (
+      playerField[y][x].classList.contains("horizontal") ||
+      playerField[y][x].classList.contains("vertical") ||
+      playerField[y][x].classList.contains("left") ||
+      playerField[y][x].classList.contains("right") ||
+      playerField[y][x].classList.contains("top") ||
+      playerField[y][x].classList.contains("bottom") ||
+      playerField[y][x].classList.contains("colliding")
+    ) {
+      playerField[y][x].style.pointerEvents = "none";
+    }
     this.disableFieldBesideShip(playerField, sizeship, data);
   },
 
@@ -673,20 +950,6 @@ let SinkShip = {
                     removedShip.available++;
                     this.checkIfShipsEmpty(removedShip.type);
                     console.log(removedShip.available);
-
-                    // if (removedShip.available === 2) {
-                    //   const tableRows = document.querySelectorAll("tbody tr");
-                    //   tableRows.forEach((row) => {
-                    //     const typeDiv = row.querySelector("td div");
-                    //     console.log(typeDiv.textContent);
-                    //     if (typeDiv.textContent === removedShipType) {
-                    //       // const cells = row.querySelectorAll(".w, .h");
-                    //       // cells.forEach((cell) => {
-                    //       //   cell.classList.remove("off");
-                    //       // });
-                    //     }
-                    //   });
-                    //}
                   }
                 });
               });
@@ -793,7 +1056,6 @@ let SinkShip = {
 
   checkIfShipsEmpty(shipType) {
     const shipElements = document.querySelectorAll(`.${shipType}.selectable`);
-    console.log("florin");
 
     let hasAvailableShips = false;
     for (let i = 0; i < this.inventory.length; i++) {
@@ -809,11 +1071,20 @@ let SinkShip = {
     if (hasAvailableShips) {
       shipElements.forEach((shipElement) => {
         shipElement.style.backgroundColor = "white";
+        shipElement.style.pointerEvents = "auto";
       });
     } else {
       shipElements.forEach((shipElement) => {
         shipElement.style.backgroundColor = "grey";
+        shipElement.style.pointerEvents = "none";
       });
+    }
+
+    let enablePlayButton;
+    for (let i = 0; i < this.inventory.length; i++) {
+      if (this.inventory[i].available === 0) {
+        this.enablePlayButton();
+      }
     }
   },
 
@@ -830,6 +1101,22 @@ let SinkShip = {
   },
 
   drawShip(x, y) {
+    for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        if (
+          this.playerField[y][x].classList.contains("horizontal") ||
+          this.playerField[y][x].classList.contains("vertical") ||
+          this.playerField[y][x].classList.contains("left") ||
+          this.playerField[y][x].classList.contains("right") ||
+          this.playerField[y][x].classList.contains("top") ||
+          this.playerField[y][x].classList.contains("bottom") ||
+          this.playerField[y][x].classList.contains("colliding")
+        ) {
+          this.playerField[y][x].style.pointerEvents = "auto";
+        }
+      }
+    }
+
     if (this.selectedShipOrientation === "horizontal") {
       const firstCell = this.playerField[y][x];
       firstCell.classList.add("cell", "left");
@@ -866,20 +1153,41 @@ let SinkShip = {
   },
 
   buildButton() {
-    for (let x = 0; x < 10; x++) {
-      for (let y = 0; y < 10; y++) {
-        this.playerField[x][y].classList = "cell";
-        this.playerField[x][y].style.backgroundColor = "";
-      }
-    }
+    location.reload();
+  },
 
-    const selectableElements = document.querySelectorAll(
-      "[class*='selectable']"
-    );
+  createPopUp(textContent) {
+    const overlay = document.createElement("div");
+    overlay.classList.add("overlay");
 
-    selectableElements.forEach((element) => {
-      element.style.backgroundColor = "";
+    const heading = document.createElement("h1");
+    heading.textContent = textContent;
+
+    const h2 = document.createElement("h2");
+    h2.textContent = "Play again?";
+
+    const button = document.createElement("button");
+    button.textContent = "Play again";
+    button.addEventListener("click", () => {
+      this.buildButton();
     });
-    this.buildInventory();
+
+    overlay.appendChild(heading);
+    overlay.appendChild(h2);
+    overlay.appendChild(button);
+
+    document.body.appendChild(overlay);
+
+    return overlay;
+  },
+
+  serverWon() {
+    const overlay = this.createPopUp("The server wins...");
+    return overlay;
+  },
+
+  playerWon() {
+    const overlay = this.createPopUp("You win!");
+    return overlay;
   },
 };

@@ -205,7 +205,8 @@ button {
   background-position: -100% 0;
 }
 
-.left {
+.left,
+.left2 {
   background-color: lightblue;
   background-position: 0% -100%;
 }
@@ -215,17 +216,20 @@ button {
   background-position: -100% -100%;
 }
 
-.right {
+.right,
+.right2 {
   background-color: lightblue;
   background-position: -200% -100%;
 }
 
-.top {
+.top,
+.top2 {
   background-color: lightblue;
   background-position: 100% 0%;
 }
 
-.bottom {
+.bottom,
+.bottom2 {
   background-color: lightblue;
   background-position: 100% -66%;
 }
@@ -318,4 +322,55 @@ button[disabled] {
 
 .disabled {
   background-color: grey;
+}
+
+.message {
+  background-color: white;
+  width: 600px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  margin: 1em auto;
+  padding: 5px;
+}
+
+.hitWater {
+  background-color: blue;
+  background-position: -200% 0;
+}
+
+.hit {
+  background-position: -200% 0;
+  background-color: red;
+}
+
+.hitLast {
+  background-color: orange;
+  background-position: -200% 0;
+}
+
+.off {
+  background-color: gray;
+  pointer-events: none;
+}
+
+.overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  width: 300px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  border: 3px solid black;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.overlay button {
+  width: 250px;
+  font-size: 30px;
 }
