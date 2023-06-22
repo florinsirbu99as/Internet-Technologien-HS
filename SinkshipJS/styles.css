@@ -311,3 +311,11 @@ button[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.usable {
+  background-color: green;
+}
+
+.disabled {
+  background-color: grey;
+}

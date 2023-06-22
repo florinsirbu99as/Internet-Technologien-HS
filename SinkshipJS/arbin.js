@@ -196,7 +196,6 @@ const SinkShip = {
         type: "Cruiser",
         size: "4",
       },
-
       {
         number: "3",
         class1: "destroyer",

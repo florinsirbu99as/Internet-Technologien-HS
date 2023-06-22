@@ -19,8 +19,6 @@ let SinkShip = {
     document.body.appendChild(this.makeHeader());
     document.body.appendChild(this.makeMain());
     document.body.appendChild(this.makeFooter());
-    this.shipHandler();
-    this.buildInventory();
   },
   makeHeader() {
     const header = document.createElement("header");
@@ -92,7 +90,7 @@ let SinkShip = {
     playButton.addEventListener("click", () => {
       this.playButton();
     });
-    //playButton.disabled = true;
+    playButton.disabled = true;
     controls.appendChild(playButton);
 
     const autoplaceButton = this.makeButton("Autoplace", "btn-autplace");
@@ -127,7 +125,135 @@ let SinkShip = {
   },
 
   autoplaceButton() {
+    const battleshipType = "Battleship";
+    const cruiserType = "Cruiser";
+    const destroyerType = "Destroyer";
+    const submarineType = "Submarine";
+    const cruiserCount = 2;
+    const destroyerCount = 3;
+    const submarineCount = 4;
+    const shipSize = {
+      Battleship: 5,
+      Cruiser: 4,
+      Destroyer: 3,
+      Submarine: 2,
+    };
+
     this.buildButton();
+    this.buildInventory();
+
+    placeShip.call(this, battleshipType, shipSize.Battleship);
+
+    for (let i = 0; i < cruiserCount; i++) {
+      placeShip.call(this, cruiserType, shipSize.Cruiser);
+    }
+    for (let i = 0; i < destroyerCount; i++) {
+      placeShip.call(this, destroyerType, shipSize.Destroyer);
+    }
+    for (let i = 0; i < submarineCount; i++) {
+      placeShip.call(this, submarineType, shipSize.Submarine);
+    }
+
+    function placeShip(shipType, size) {
+      const classNames = ["w", "h"];
+      const className =
+        classNames[Math.floor(Math.random() * classNames.length)];
+      let startX = Math.floor(Math.random() * 10);
+      let startY = Math.floor(Math.random() * 10);
+
+      while (
+        !this.ShipPosition(className, size, startX, startY) ||
+        this.isShipAdjacentOrColliding(className, size, startX, startY)
+      ) {
+        startX = Math.floor(Math.random() * 10);
+        startY = Math.floor(Math.random() * 10);
+      }
+
+      if (className === "w") {
+        for (let i = 0; i < size; i++) {
+          const cell = this.playerField[startX][startY + i];
+          cell.classList.remove(
+            "left",
+            "right",
+            "top",
+            "bottom",
+            "horizontal",
+            "vertical"
+          );
+          cell.classList.add(
+            i === 0 ? "left" : i === size - 1 ? "right" : "horizontal"
+          );
+          cell.addEventListener("click", this.cellClickHandler);
+        }
+      } else if (className === "h") {
+        for (let i = 0; i < size; i++) {
+          const cell = this.playerField[startX + i][startY];
+          cell.classList.remove(
+            "left",
+            "right",
+            "top",
+            "bottom",
+            "horizontal",
+            "vertical"
+          );
+          cell.classList.add(
+            i === 0 ? "top" : i === size - 1 ? "bottom" : "vertical"
+          );
+          cell.addEventListener("click", this.cellClickHandler);
+        }
+      }
+      const ship = this.inventory.find((ship) => ship.type === shipType);
+      if (ship) {
+        ship.available--;
+      }
+    }
+  },
+
+  isShipAdjacentOrColliding(className, shipSize, x, y) {
+    const endX = x + (className === "h" ? shipSize - 1 : 0);
+    const endY = y + (className === "w" ? shipSize - 1 : 0);
+    console.log("endx:", endX, "endy:", endY);
+    for (let i = x - 1; i <= endX + 1; i++) {
+      for (let j = y - 1; j <= endY + 1; j++) {
+        if (i >= 0 && i < 10 && j >= 0 && j < 10) {
+          console.log(i, j);
+          const cell = this.playerField[i][j]; //why i get here this error: Uncaught TypeError: Cannot read properties of undefined (reading '3')
+          if (
+            cell.classList.contains("horizontal") ||
+            cell.classList.contains("vertical") ||
+            cell.classList.contains("left") ||
+            cell.classList.contains("right") ||
+            cell.classList.contains("top") ||
+            cell.classList.contains("bottom")
+          ) {
+            if (
+              !(i === x && j === y) &&
+              !(
+                (i === x - 1 && j === y - 1) ||
+                (i === x - 1 && j === endY + 1) ||
+                (i === endX + 1 && j === y - 1) ||
+                (i === endX + 1 && j === endY + 1)
+              )
+            ) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  },
+
+  ShipPosition(className, shipSize, x, y) {
+    const endX = x + (className === "h" ? shipSize - 1 : 0);
+    const endY = y + (className === "w" ? shipSize - 1 : 0);
+
+    if (endX < 10 && endY < 10) {
+      return true;
+    } else {
+      return false;
+    }
   },
 
   buildMenu() {
@@ -276,36 +402,186 @@ let SinkShip = {
     ) {
       if (data[1] === "h") {
         if (x < size) {
-          playerField[y][x].style.backgroundColor = "green";
-          playerField[y][x].classList = "cell usable";
+          playerField[y][x].classList.add("usable");
         } else {
-          playerField[y][x].style.backgroundColor = "grey";
-          playerField[y][x].classList = "cell disabled";
+          playerField[y][x].classList.add("disabled");
         }
       } else if (data[1] === "v") {
         if (y < size) {
-          playerField[y][x].style.backgroundColor = "green";
-          playerField[y][x].classList = "cell usable";
+          playerField[y][x].classList.add("usable");
         } else {
-          playerField[y][x].style.backgroundColor = "grey";
-          playerField[y][x].classList = "cell disabled";
+          playerField[y][x].classList.add("disabled");
         }
       }
-    } else if (playerField[y][x].classList.contains("left")) {
-      for (let i = 0; i <= sizeship; i++) {
-        if (playerField[y][x - i]) {
-          playerField[y][x - i].style.backgroundColor = "grey";
-          playerField[y][x - i].classList.add("disabled");
-        }
-      }
-    } else if (playerField[y][x].classList.contains("horizontal")) {
-      for (let i = 0; i <= sizeship; i++) {
-        if (playerField[y - 1] || playerField[y + 1]) {
+    }
+
+    this.disableFieldBesideShip(playerField, sizeship, data);
+  },
+
+  disableFieldBesideShip(playerField, sizeship, data) {
+    for (let x = 0; x < 10; x++) {
+      for (let y = 0; y < 10; y++) {
+        if (playerField[y][x]) {
+          const cellClassList = playerField[y][x].classList;
+
+          if (
+            cellClassList.contains("left") ||
+            cellClassList.contains("right") ||
+            cellClassList.contains("top") ||
+            cellClassList.contains("bottom") ||
+            cellClassList.contains("horizontal") ||
+            cellClassList.contains("vertical")
+          ) {
+            if (x > 0 && playerField[y][x - 1]) {
+              playerField[y][x - 1].classList.remove("usable");
+              playerField[y][x - 1].classList.add("disabled");
+            }
+            if (x < 9 && playerField[y][x + 1]) {
+              playerField[y][x + 1].classList.remove("usable");
+              playerField[y][x + 1].classList.add("disabled");
+            }
+            if (y > 0 && playerField[y - 1][x]) {
+              playerField[y - 1][x].classList.remove("usable");
+              playerField[y - 1][x].classList.add("disabled");
+            }
+            if (y < 9 && playerField[y + 1][x]) {
+              playerField[y + 1][x].classList.remove("usable");
+              playerField[y + 1][x].classList.add("disabled");
+            }
+          }
+
+          if (data[1] === "h") {
+            if (
+              playerField[y][x] &&
+              playerField[y][x].classList.contains("left")
+            ) {
+              for (let i = 0; i <= sizeship; i++) {
+                if (
+                  x - i >= 0 &&
+                  playerField[y][x - i] &&
+                  playerField[y][x - i].classList.contains("usable")
+                ) {
+                  playerField[y][x - i].classList.remove("usable");
+                  playerField[y][x - i].classList.add("disabled");
+                }
+                if (
+                  y > 0 &&
+                  y - 1 >= 0 &&
+                  playerField[y - 1][x - i] &&
+                  playerField[y - 1][x - i].classList.contains("usable")
+                ) {
+                  playerField[y - 1][x - i].classList.remove("usable");
+                  playerField[y - 1][x - i].classList.add("disabled");
+                }
+                if (
+                  y < 9 &&
+                  y + 1 <= 9 &&
+                  playerField[y + 1][x - i] &&
+                  playerField[y + 1][x - i].classList.contains("usable")
+                ) {
+                  playerField[y + 1][x - i].classList.remove("usable");
+                  playerField[y + 1][x - i].classList.add("disabled");
+                }
+              }
+            }
+            if (
+              playerField[y][x] &&
+              playerField[y][x].classList.contains("vertical")
+            ) {
+              for (let i = 0; i <= sizeship; i++) {
+                if (
+                  x - i >= 0 &&
+                  playerField[y][x - i] &&
+                  playerField[y][x - i].classList.contains("usable")
+                ) {
+                  playerField[y][x - i].classList.remove("usable");
+                  playerField[y][x - i].classList.add("disabled");
+                }
+              }
+            }
+            if (
+              playerField[y][x] &&
+              playerField[y][x].classList.contains("top")
+            ) {
+              for (let i = 0; i <= sizeship; i++) {
+                if (
+                  x - i >= 0 &&
+                  playerField[y][x - i] &&
+                  playerField[y][x - i].classList.contains("usable")
+                ) {
+                  playerField[y][x - i].classList.remove("usable");
+                  playerField[y][x - i].classList.add("disabled");
+                }
+              }
+            }
+            if (
+              playerField[y][x] &&
+              playerField[y][x].classList.contains("bottom")
+            ) {
+              for (let i = 0; i <= sizeship; i++) {
+                if (
+                  x - i >= 0 &&
+                  playerField[y][x - i] &&
+                  playerField[y][x - i].classList.contains("usable")
+                ) {
+                  playerField[y][x - i].classList.remove("usable");
+                  playerField[y][x - i].classList.add("disabled");
+                }
+              }
+            }
+          }
+
+          if (data[1] === "v") {
+            if (
+              playerField[y][x] &&
+              playerField[y][x].classList.contains("left")
+            ) {
+              for (let i = 0; i <= sizeship; i++) {
+                if (
+                  y - i >= 0 &&
+                  playerField[y - i][x] &&
+                  playerField[y - i][x].classList.contains("usable")
+                ) {
+                  playerField[y - i][x].classList.remove("usable");
+                  playerField[y - i][x].classList.add("disabled");
+                }
+              }
+            }
+            if (
+              playerField[y][x] &&
+              playerField[y][x].classList.contains("right")
+            ) {
+              for (let i = 0; i <= sizeship; i++) {
+                if (
+                  y - i >= 0 &&
+                  playerField[y - i][x] &&
+                  playerField[y - i][x].classList.contains("usable")
+                ) {
+                  playerField[y - i][x].classList.remove("usable");
+                  playerField[y - i][x].classList.add("disabled");
+                }
+              }
+            }
+            if (
+              playerField[y][x] &&
+              playerField[y][x].classList.contains("horizontal")
+            ) {
+              for (let i = 0; i <= sizeship; i++) {
+                if (
+                  y - i >= 0 &&
+                  playerField[y - i][x] &&
+                  playerField[y - i][x].classList.contains("usable")
+                ) {
+                  playerField[y - i][x].classList.remove("usable");
+                  playerField[y - i][x].classList.add("disabled");
+                }
+              }
+            }
+          }
         }
       }
     }
   },
-
   shipHandler() {
     for (let x = 0; x < 10; x++) {
       for (let y = 0; y < 10; y++) {
@@ -317,7 +593,7 @@ let SinkShip = {
             console.log(
               `Orientation: ${this.selectedShipOrientation}, Size: ${this.selectedShipSize}, Type: ${this.selectedShipType}`
             );
-            this.removeShip();
+            //this.removeShip();
             cell.classList.remove("usable");
             if (this.selectedShipOrientation === "w") {
               for (let i = 0; i < this.selectedShipSize; i++) {
@@ -344,28 +620,38 @@ let SinkShip = {
             }
 
             if (!this.playButtonPressed) {
+              console.log("Inside if block");
               const removedShipType = this.selectedShipType;
               const shipCells = [];
-              if (this.selectedShipOrientation === "w") {
-                for (let i = 0; i < this.selectedShipSize; i++) {
-                  const shipCell = this.playerField[y][x + i];
-                  shipCells.push(shipCell);
-                }
-              } else if (this.selectedShipOrientation === "h") {
+              this.checkIfShipsEmpty(removedShipType);
+              if (this.selectedShipOrientation === "vertical") {
                 for (let i = 0; i < this.selectedShipSize; i++) {
                   const shipCell = this.playerField[y + i][x];
                   shipCells.push(shipCell);
                 }
+              } else if (this.selectedShipOrientation === "horizontal") {
+                for (let i = 0; i < this.selectedShipSize; i++) {
+                  const shipCell = this.playerField[y][x + i];
+                  shipCells.push(shipCell);
+                }
               }
+
+              console.log("shipCells:", shipCells);
 
               shipCells.forEach((shipCell) => {
                 shipCell.addEventListener("click", () => {
+                  console.log("Ship cell clicked");
                   if (!this.isShipPlaced(shipCells)) {
+                    console.log("Ship is already placed, exiting callback");
                     return;
                   }
                   const clickedIndex = shipCells.indexOf(shipCell);
 
+                  console.log("clickedIndex:", clickedIndex);
+                  console.log("shipCell:", shipCell);
+
                   shipCells.forEach((cell) => {
+                    console.log("Inside shipCells forEach");
                     cell.classList.remove(
                       "left",
                       "right",
@@ -381,21 +667,26 @@ let SinkShip = {
                   const removedShip = this.inventory.find(
                     (ship) => ship.type === removedShipType
                   );
+
+                  console.log("removedShip:", removedShip);
                   if (removedShip) {
                     removedShip.available++;
+                    this.checkIfShipsEmpty(removedShip.type);
+                    console.log(removedShip.available);
 
-                    if (removedShip.available === 2) {
-                      const tableRows = document.querySelectorAll("tbody tr");
-                      tableRows.forEach((row) => {
-                        const typeDiv = row.querySelector("td div");
-                        if (typeDiv.textContent === removedShipType) {
-                          const cells = row.querySelectorAll(".w, .h");
-                          cells.forEach((cell) => {
-                            cell.classList.remove("off");
-                          });
-                        }
-                      });
-                    }
+                    // if (removedShip.available === 2) {
+                    //   const tableRows = document.querySelectorAll("tbody tr");
+                    //   tableRows.forEach((row) => {
+                    //     const typeDiv = row.querySelector("td div");
+                    //     console.log(typeDiv.textContent);
+                    //     if (typeDiv.textContent === removedShipType) {
+                    //       // const cells = row.querySelectorAll(".w, .h");
+                    //       // cells.forEach((cell) => {
+                    //       //   cell.classList.remove("off");
+                    //       // });
+                    //     }
+                    //   });
+                    //}
                   }
                 });
               });
@@ -407,10 +698,22 @@ let SinkShip = {
     }
   },
 
+  isShipPlaced(shipCells) {
+    return shipCells.every(
+      (cell) =>
+        cell.classList.contains("left") ||
+        cell.classList.contains("right") ||
+        cell.classList.contains("top") ||
+        cell.classList.contains("bottom") ||
+        cell.classList.contains("horizontal") ||
+        cell.classList.contains("vertical")
+    );
+  },
+
   resetCells() {
     const cells = document.querySelectorAll(".cell");
     cells.forEach((cell) => {
-      cell.classList.remove("usable", "disable");
+      cell.classList.remove("usable", "disabled");
       cell.classList.remove("w", "h");
       cell.removeEventListener("click", this.cellClickHandler);
     });
@@ -424,6 +727,8 @@ let SinkShip = {
         available: 1,
         isPlaced: false,
         haveShips: true,
+        x: [],
+        y: [],
       },
       {
         type: "cruiser",
@@ -431,6 +736,8 @@ let SinkShip = {
         available: 2,
         isPlaced: false,
         haveShips: true,
+        x: [],
+        y: [],
       },
       {
         type: "destroyer",
@@ -438,6 +745,8 @@ let SinkShip = {
         available: 3,
         isPlaced: false,
         haveShips: true,
+        x: [],
+        y: [],
       },
       {
         type: "submarine",
@@ -445,6 +754,8 @@ let SinkShip = {
         available: 4,
         isPlaced: false,
         haveShips: true,
+        x: [],
+        y: [],
       },
     ];
   },
@@ -469,18 +780,41 @@ let SinkShip = {
     const shipElementv = document.querySelector(
       `.${this.selectedShipType}.v.selectable`
     );
-    if (shipElementh || shipElementv) {
-      shipElementh.style.backgroundColor = "grey";
-      shipElementh.style.pointerEvents = "none";
-      shipElementv.style.backgroundColor = "grey";
-      shipElementv.style.pointerEvents = "none";
-    }
+
     for (let i = 0; i < this.inventory.length; i++) {
-      if (this.inventory.type === this.selectedShipType) {
-        this.inventory.haveShips = false;
+      if (this.inventory[i].type === this.selectedShipType) {
+        this.inventory[i].available--;
+        this.checkIfShipsEmpty(this.selectedShipType);
       }
     }
+
     this.enablePlayButton();
+  },
+
+  checkIfShipsEmpty(shipType) {
+    const shipElements = document.querySelectorAll(`.${shipType}.selectable`);
+    console.log("florin");
+
+    let hasAvailableShips = false;
+    for (let i = 0; i < this.inventory.length; i++) {
+      if (
+        this.inventory[i].type === shipType &&
+        this.inventory[i].available > 0
+      ) {
+        hasAvailableShips = true;
+        break;
+      }
+    }
+
+    if (hasAvailableShips) {
+      shipElements.forEach((shipElement) => {
+        shipElement.style.backgroundColor = "white";
+      });
+    } else {
+      shipElements.forEach((shipElement) => {
+        shipElement.style.backgroundColor = "grey";
+      });
+    }
   },
 
   saveShipData(data) {
@@ -525,20 +859,8 @@ let SinkShip = {
     for (let i = 0; i < this.inventory.length; i++) {
       if (this.selectedShipType === this.inventory[i].type) {
         this.inventory[i].isPlaced = true;
-        console.log(this.inventory[i].isPlaced);
-      }
-    }
-  },
-
-  removeShip() {
-    for (let x = 0; x < 10; x++) {
-      for (let y = 0; y < 10; y++) {
-        const cell = this.playerField[x][y];
-        if (cell.classList.contains("left")) {
-          cell.addEventListener("click", () => {
-            cell.classList.remove("left");
-          });
-        }
+        this.inventory[i].x.push(x);
+        this.inventory[i].y.push(y);
       }
     }
   },
